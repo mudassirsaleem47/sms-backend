@@ -21,7 +21,7 @@ const itemStoreRoutes = require("./routes/itemStoreRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGO_URL = process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/school-management';
+const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URL || 'mongodb://127.0.0.1:27017/school-management';
 
 const isAllowedOrigin = (origin) => {
     if (!origin) return true;
@@ -85,6 +85,10 @@ app.use('/Inventory/Store', itemStoreRoutes);
 
 
 // Database Connection
+if (process.env.NODE_ENV === 'production' && !process.env.MONGO_URL && !process.env.MONGODB_URL) {
+    console.error('❌ Missing MongoDB connection string in production. Set MONGO_URL or MONGODB_URL.');
+}
+
 mongoose
     .connect(MONGO_URL)
     .then(() => {
@@ -92,7 +96,7 @@ mongoose
     })
     .catch((err) => {
         console.log("Database Connection Error:", err.message || err);
-        console.log("⚠️ Server is running but DB is disconnected. Check MONGO_URL / MongoDB service.");
+        console.log("⚠️ Server is running but DB is disconnected. Check MONGO_URL/MONGODB_URL and MongoDB service.");
     });
 
 if (require.main === module) {
