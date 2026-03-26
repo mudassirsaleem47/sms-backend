@@ -173,6 +173,17 @@ const studentAdmission = async (req, res) => {
     const result = await newStudent.save();
     console.log(`✅ Student saved to database with admissionNum ${result.admissionNum}:`, result._id);
 
+    // Double-check admissionNum was saved
+    if (!result.admissionNum) {
+      console.error(`❌ CRITICAL ERROR: Student saved but admissionNum is empty! ID: ${result._id}`);
+      console.log(`   Student data:`, {
+        name: result.name,
+        rollNum: result.rollNum,
+        school: result.school,
+        admissionNum: result.admissionNum
+      });
+    }
+
     // --- Admission Confirmation Email Logic ---
     try {
       const template = await MessageTemplate.findOne({
