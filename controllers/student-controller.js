@@ -395,16 +395,30 @@ const getStudentsBySchool = async (req, res) => {
       return res.status(400).json({ message: "Invalid school ID." });
     }
 
-    let query = { school: schoolId, status: "Active" };
+    let query = {
+      school: schoolId,
+      $and: [
+        {
+          $or: [
+            { status: "Active" },
+            { status: "active" },
+            { status: { $exists: false } },
+            { status: null }
+          ]
+        }
+      ]
+    };
     if (session) {
       query.session = session;
     }
     if (isValidCampusId(campus)) {
-      query.$or = [
-        { campus: campus },
-        { campus: { $exists: false } },
-        { campus: null }
-      ];
+      query.$and.push({
+        $or: [
+          { campus: campus },
+          { campus: { $exists: false } },
+          { campus: null }
+        ]
+      });
     }
 
     // LOG: Debug the query
