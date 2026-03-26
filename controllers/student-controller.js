@@ -88,12 +88,20 @@ const studentAdmission = async (req, res) => {
         ? req.files["guardianPhoto"][0].path.replace(/\\/g, '/')
         : "";
 
-    // Parse JSON fields
-    const father = req.body.father ? JSON.parse(req.body.father) : {};
-    const mother = req.body.mother ? JSON.parse(req.body.mother) : {};
-    const guardian = req.body.guardian ? JSON.parse(req.body.guardian) : {};
-    const transport = req.body.transport ? JSON.parse(req.body.transport) : {};
-    const siblings = req.body.siblings ? JSON.parse(req.body.siblings) : [];
+    // Parse JSON fields with error handling
+    const parseJSON = (str, defaultVal) => {
+      try {
+        return str ? JSON.parse(str) : defaultVal;
+      } catch (e) {
+        console.error('JSON Parse Error:', e.message, 'Value:', str);
+        return defaultVal;
+      }
+    };
+    const father = parseJSON(req.body.father, {});
+    const mother = parseJSON(req.body.mother, {});
+    const guardian = parseJSON(req.body.guardian, {});
+    const transport = parseJSON(req.body.transport, {});
+    const siblings = parseJSON(req.body.siblings, []);
 
     const studentPayload = { ...req.body };
     if (studentPayload.session === "") delete studentPayload.session;
@@ -217,9 +225,7 @@ const studentAdmission = async (req, res) => {
     }
 
     // --- Fee Assignment Logic ---
-    const feeStructureIds = req.body.feeStructureIds
-      ? JSON.parse(req.body.feeStructureIds)
-      : [];
+    const feeStructureIds = parseJSON(req.body.feeStructureIds, []);
     if (feeStructureIds.length > 0) {
       for (const feeStructureId of feeStructureIds) {
         try {

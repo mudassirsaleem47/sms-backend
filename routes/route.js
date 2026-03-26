@@ -39,16 +39,6 @@ const {
 
 const { getMedia, deleteMedia, uploadMedia } = require('../controllers/media-controller.js');
 
-// --- Session API Routes ---
-const { createSession, getSessionsBySchool, makeSessionActive, deleteSession, updateSession, getActiveSessionBySchool } = require('../controllers/session-controller.js');
-
-router.post('/SessionCreate', createSession);
-router.get('/Sessions/:schoolId', getSessionsBySchool);
-router.get('/Sessions/Active/:schoolId', getActiveSessionBySchool);
-router.put('/Sessions/MakeActive', makeSessionActive);
-router.put('/Session/:id', updateSession);
-router.delete('/Session/:id', deleteSession);
-
 // --- Admin Auth Routes ---
 router.post('/AdminReg', adminRegister);
 router.post('/AdminLogin', loginRateLimit, adminLogin);
@@ -68,6 +58,16 @@ router.post('/staff/login', loginRateLimit, staffLogin); // Alias
 
 // Protect all routes below with JWT auth.
 router.use(authenticateToken);
+
+// --- Session API Routes (Protected) ---
+const { createSession, getSessionsBySchool, makeSessionActive, deleteSession, updateSession, getActiveSessionBySchool } = require('../controllers/session-controller.js');
+
+router.post('/SessionCreate', requireRoles(['admin']), createSession);
+router.get('/Sessions/:schoolId', requireSchoolAccess({ paramKey: 'schoolId' }), getSessionsBySchool);
+router.get('/Sessions/Active/:schoolId', requireSchoolAccess({ paramKey: 'schoolId' }), getActiveSessionBySchool);
+router.put('/Sessions/MakeActive', requireRoles(['admin']), makeSessionActive);
+router.put('/Session/:id', requireRoles(['admin']), updateSession);
+router.delete('/Session/:id', requireRoles(['admin']), deleteSession);
 
 router.get('/Admin/:id', requireSchoolAccess({ paramKey: 'id' }), getAdminDetail);
 router.put('/Admin/:id', requireRoles(['admin']), requireSchoolAccess({ paramKey: 'id' }), upload.fields([{ name: 'schoolLogo', maxCount: 1 }, { name: 'profilePicture', maxCount: 1 }, { name: 'favicon', maxCount: 1 }]), updateAdmin);

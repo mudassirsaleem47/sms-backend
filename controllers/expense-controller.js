@@ -99,6 +99,9 @@ const getExpenseStatistics = async (req, res) => {
             }
         }
 
+        if (!mongoose.Types.ObjectId.isValid(schoolId)) {
+            return res.status(400).json({ message: "Invalid school ID format" });
+        }
         const matchQuery = { school: new mongoose.Types.ObjectId(schoolId), ...dateQuery };
 
         // Total expense

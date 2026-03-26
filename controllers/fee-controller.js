@@ -424,6 +424,9 @@ const getFeeStatistics = async (req, res) => {
             }
         }
 
+        if (!mongoose.Types.ObjectId.isValid(schoolId)) {
+            return res.status(400).json({ message: "Invalid school ID format" });
+        }
         const feeMatchQuery = { school: new mongoose.Types.ObjectId(schoolId), ...feeDateQuery };
         const transMatchQuery = { school: new mongoose.Types.ObjectId(schoolId), ...transDateQuery };
 
