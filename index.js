@@ -23,12 +23,27 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URL || 'mongodb://127.0.0.1:27017/school-management';
 
+const configuredOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
 const isAllowedOrigin = (origin) => {
     if (!origin) return true;
 
     try {
         const parsed = new URL(origin);
         const host = parsed.hostname;
+
+        if (configuredOrigins.includes(origin)) return true;
+        if (configuredOrigins.some((entry) => {
+            try {
+                const configuredHost = new URL(entry).hostname;
+                return configuredHost === host;
+            } catch {
+                return false;
+            }
+        })) return true;
 
         if (host === 'localhost' || host === '127.0.0.1') return true;
         if (/^192\.168\./.test(host)) return true;
@@ -46,7 +61,8 @@ app.use(express.json());
 app.use(cors({
     origin: function (origin, callback) {
         if (isAllowedOrigin(origin)) return callback(null, true);
-        return callback(new Error('Not allowed by CORS'));
+        // Return a CORS deny without turning it into a 500 server error.
+        return callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
