@@ -2,9 +2,18 @@ const Groq = require('groq-sdk');
 const mongoose = require('mongoose');
 const CODEBASE_SUMMARY = require('../codebaseSummary');
 
-const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY
-});
+let groq = null;
+const getGroqClient = () => {
+    if (groq) return groq;
+
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey || !String(apiKey).trim()) {
+        return null;
+    }
+
+    groq = new Groq({ apiKey });
+    return groq;
+};
 
 // Models to provide context if needed
 const Student = require('../models/studentSchema');
@@ -60,6 +69,14 @@ ${CODEBASE_SUMMARY}`;
 
 async function getChatResponse(userQuery, schoolId, history = []) {
     try {
+        const groqClient = getGroqClient();
+        if (!groqClient) {
+            return {
+                success: false,
+                error: 'GROQ_API_KEY is missing. Please set it in backend .env to enable AI chat.'
+            };
+        }
+
         // Fetch detailed stats for context if schoolId is provided
         let contextData = "";
         if (schoolId) {
@@ -99,7 +116,7 @@ async function getChatResponse(userQuery, schoolId, history = []) {
             - Registered Classes: ${classes.map(c => c.sclassName).join(', ')}`;
         }
 
-        const chatCompletion = await groq.chat.completions.create({
+        const chatCompletion = await groqClient.chat.completions.create({
             messages: [
                 { role: "system", content: SYSTEM_PROMPT + contextData },
                 ...history,
