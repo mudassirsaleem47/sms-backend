@@ -406,13 +406,24 @@ const getStudentsBySchool = async (req, res) => {
       query.session = session;
     }
 
-    // Add campus filter if provided
+    // Add campus filter if provided - use $and to combine properly
     if (isValidCampusId(campus)) {
-      query.$or = [
-        { campus: campus },
-        { campus: { $exists: false } },
-        { campus: null }
-      ];
+      query = {
+        $and: [
+          { school: schoolId },
+          { status: { $in: ["Active", "active", null, undefined] } },
+          {
+            $or: [
+              { campus: campus },
+              { campus: { $exists: false } },
+              { campus: null }
+            ]
+          }
+        ]
+      };
+      if (session) {
+        query.$and.push({ session: session });
+      }
     }
 
     // LOG: Debug the query

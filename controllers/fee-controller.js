@@ -50,11 +50,18 @@ const getFeeStructuresBySchool = async (req, res) => {
         
         let query = { school: schoolId, status: 'Active' };
         if (isValidCampusId(campus)) {
-            query.$or = [
-                { campus: campus },
-                { campus: { $exists: false } },
-                { campus: null }
-            ];
+            query = {
+                $and: [
+                    { school: schoolId, status: 'Active' },
+                    {
+                        $or: [
+                            { campus: campus },
+                            { campus: { $exists: false } },
+                            { campus: null }
+                        ]
+                    }
+                ]
+            };
         }
 
         const feeStructures = await FeeStructure.find(query)
