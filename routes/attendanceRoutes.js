@@ -4,6 +4,14 @@ const Attendance = require('../models/attendanceSchema');
 const Leave = require('../models/leaveSchema');
 const Student = require('../models/studentSchema');
 const Sclass = require('../models/sclassSchema');
+const mongoose = require('mongoose');
+
+const isValidCampusId = (campus) => (
+    !!campus &&
+    campus !== 'undefined' &&
+    campus !== 'null' &&
+    mongoose.Types.ObjectId.isValid(campus)
+);
 
 // ==========================================
 // Student Attendance Routes
@@ -14,6 +22,7 @@ const Sclass = require('../models/sclassSchema');
 router.post('/Mark', async (req, res) => {
     try {
         const { date, attendance, school, campus, sclass } = req.body;
+        const safeCampus = isValidCampusId(campus) ? campus : undefined;
         
         // This is a bulk upsert operation
         const operations = attendance.map(record => ({
@@ -22,7 +31,7 @@ router.post('/Mark', async (req, res) => {
                 update: { 
                     $set: { 
                         school: school,
-                        campus: campus,
+                        campus: safeCampus,
                         sclass: sclass,
                         status: record.status, 
                         remark: record.remark 
@@ -56,7 +65,7 @@ router.get('/ForClass/:schoolId/:classId/:date', async (req, res) => {
             date: { $gte: startOfDay, $lte: endOfDay }
         };
 
-        if (campus) query.campus = campus;
+        if (isValidCampusId(campus)) query.campus = campus;
         
         const existingAttendance = await Attendance.find(query).populate('student', 'name rollNum');
         res.send(existingAttendance);
@@ -87,7 +96,7 @@ router.post('/Report', async (req, res) => {
             date: { $gte: new Date(dateFrom), $lte: new Date(dateTo) }
         };
         
-        if (campus) query.campus = campus;
+        if (isValidCampusId(campus)) query.campus = campus;
         if (classId) query.sclass = classId;
 
         // If filtering by section, we need student IDs first
@@ -132,7 +141,7 @@ router.get('/Leave/List/:schoolId', async (req, res) => {
     try {
         const { campus } = req.query;
         const query = { school: req.params.schoolId };
-        if (campus) query.campus = campus;
+        if (isValidCampusId(campus)) query.campus = campus;
 
         const leaves = await Leave.find(query)
             .populate('student', 'name rollNum')
