@@ -22,7 +22,7 @@ const itemStoreRoutes = require("./routes/itemStoreRoutes");
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URL || 'mongodb://127.0.0.1:27017/school-management';
-
+console.log(MONGO_URL);
 const configuredOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '')
     .split(',')
     .map((origin) => origin.trim())
