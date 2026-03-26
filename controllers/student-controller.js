@@ -127,7 +127,7 @@ const studentAdmission = async (req, res) => {
     // Find all matching students and derive next sequence from numeric suffix.
     const schoolStudents = await Student.find(admissionFilter).select("admissionNum");
 
-    let nextNumber = 0;
+    let nextNumber = 1;
     if (schoolStudents.length > 0) {
         const numbers = schoolStudents
             .map(s => {
@@ -599,7 +599,7 @@ const getNextAdmissionNumber = async (req, res) => {
 
     const students = await Student.find(admissionFilter).select("admissionNum");
 
-    let nextNumber = 0;
+    let nextNumber = 1;
     if (students.length > 0) {
       const numbers = students
         .map((s) => {
