@@ -61,11 +61,18 @@ const getTeachersBySchool = async (req, res) => {
 
         let query = { school: schoolId };
         if (isValidCampusId(campus)) {
-            query.$or = [
-                { campus: campus },
-                { campus: { $exists: false } },
-                { campus: null }
-            ];
+            query = {
+                $and: [
+                    { school: schoolId },
+                    {
+                        $or: [
+                            { campus: campus },
+                            { campus: { $exists: false } },
+                            { campus: null }
+                        ]
+                    }
+                ]
+            };
         }
 
         // Find teachers and populate assigned classes

@@ -395,54 +395,24 @@ const getStudentsBySchool = async (req, res) => {
       return res.status(400).json({ message: "Invalid school ID." });
     }
 
-    // Build status filter to handle Active, active, missing, or null
-    let statusFilter = {
-      $or: [
-        { status: "Active" },
-        { status: "active" },
-        { status: { $exists: false } },
-        { status: null }
-      ]
+    // Build query: Include Active, active, or missing status (backward compatible)
+    let query = {
+      school: schoolId,
+      status: { $in: ["Active", "active", null, undefined] }
     };
 
-    let query = { school: schoolId, ...statusFilter };
-
+    // Add session filter if provided
     if (session) {
       query.session = session;
     }
 
+    // Add campus filter if provided
     if (isValidCampusId(campus)) {
       query.$or = [
         { campus: campus },
         { campus: { $exists: false } },
         { campus: null }
       ];
-      // Reconstruct query with proper $and to combine both conditions
-      query = {
-        $and: [
-          { school: schoolId },
-          {
-            $or: [
-              { status: "Active" },
-              { status: "active" },
-              { status: { $exists: false } },
-              { status: null }
-            ]
-          },
-          {
-            $or: [
-              { campus: campus },
-              { campus: { $exists: false } },
-              { campus: null }
-            ]
-          }
-        ]
-      };
-      if (session) {
-        query.$and.push({ session: session });
-      }
-    } else if (session) {
-      query.session = session;
     }
 
     // LOG: Debug the query
