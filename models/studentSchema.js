@@ -74,6 +74,10 @@ const studentSchema = new mongoose.Schema({
 
     // Admission Details
     admissionDate: Date,
+    academicYear: {
+        type: String,
+        trim: true
+    },
     session: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'session',

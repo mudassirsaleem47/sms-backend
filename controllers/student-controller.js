@@ -126,15 +126,31 @@ const studentAdmission = async (req, res) => {
       admissionFilter.session = studentPayload.session;
       console.log(`📌 Filtering admission by session: ${studentPayload.session}`);
     }
-    if (studentPayload.academicYear !== undefined && studentPayload.academicYear !== null && String(studentPayload.academicYear).trim() !== "") {
-      admissionFilter.academicYear = String(studentPayload.academicYear).trim();
-      console.log(`📌 Filtering admission by academicYear: ${admissionFilter.academicYear}`);
+    const requestedAcademicYear = (
+      studentPayload.academicYear !== undefined &&
+      studentPayload.academicYear !== null &&
+      String(studentPayload.academicYear).trim() !== ""
+    )
+      ? String(studentPayload.academicYear).trim()
+      : null;
+    if (requestedAcademicYear) {
+      admissionFilter.academicYear = requestedAcademicYear;
+      console.log(`Filtering admission by academicYear: ${requestedAcademicYear}`);
     }
 
     // Find all matching students and derive next sequence from numeric suffix.
     console.log(`📍 Searching for existing students with filter:`, admissionFilter);
-    const schoolStudents = await Student.find(admissionFilter).select("admissionNum");
-    console.log(`📍 Found ${schoolStudents.length} students with admission numbers`);
+    let schoolStudents = await Student.find(admissionFilter).select("admissionNum");
+
+    // Legacy fallback: old rows may not have academicYear persisted.
+    if (requestedAcademicYear && schoolStudents.length === 0) {
+      const legacyFilter = { ...admissionFilter };
+      delete legacyFilter.academicYear;
+      schoolStudents = await Student.find(legacyFilter).select("admissionNum");
+      console.log(`AcademicYear fallback applied. Found ${schoolStudents.length} students using filter:`, legacyFilter);
+    } else {
+      console.log(`📍 Found ${schoolStudents.length} students with admission numbers`);
+    }
 
     let nextNumber = 1;
     if (schoolStudents.length > 0) {
@@ -618,13 +634,27 @@ const getNextAdmissionNumber = async (req, res) => {
       admissionFilter.session = session;
       console.log(`📌 [getNextAdmissionNumber] Filtering by session: ${session}`);
     }
-    if (academicYear !== undefined && academicYear !== null && String(academicYear).trim() !== "") {
-      admissionFilter.academicYear = String(academicYear).trim();
-      console.log(`📌 [getNextAdmissionNumber] Filtering by academicYear: ${academicYear}`);
+    const requestedAcademicYear = (
+      academicYear !== undefined &&
+      academicYear !== null &&
+      String(academicYear).trim() !== ""
+    )
+      ? String(academicYear).trim()
+      : null;
+    if (requestedAcademicYear) {
+      admissionFilter.academicYear = requestedAcademicYear;
+      console.log(`[getNextAdmissionNumber] Filtering by academicYear: ${requestedAcademicYear}`);
     }
 
-    const students = await Student.find(admissionFilter).select("admissionNum");
-    console.log(`📌 [getNextAdmissionNumber] Found ${students.length} existing students with filter:`, admissionFilter);
+    let students = await Student.find(admissionFilter).select("admissionNum");
+    if (requestedAcademicYear && students.length === 0) {
+      const legacyFilter = { ...admissionFilter };
+      delete legacyFilter.academicYear;
+      students = await Student.find(legacyFilter).select("admissionNum");
+      console.log(`[getNextAdmissionNumber] AcademicYear fallback applied. Found ${students.length} students with filter:`, legacyFilter);
+    } else {
+      console.log(`📌 [getNextAdmissionNumber] Found ${students.length} existing students with filter:`, admissionFilter);
+    }
 
     let nextNumber = 1;
     if (students.length > 0) {
