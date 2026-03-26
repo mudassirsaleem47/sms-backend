@@ -120,6 +120,9 @@ const studentAdmission = async (req, res) => {
     if (isValidCampusId(studentPayload.session)) {
       admissionFilter.session = studentPayload.session;
     }
+    if (studentPayload.academicYear !== undefined && studentPayload.academicYear !== null && String(studentPayload.academicYear).trim() !== "") {
+      admissionFilter.academicYear = String(studentPayload.academicYear).trim();
+    }
 
     // Find all matching students and derive next sequence from numeric suffix.
     const schoolStudents = await Student.find(admissionFilter).select("admissionNum");
@@ -580,7 +583,7 @@ const getStudentById = async (req, res) => {
 const getNextAdmissionNumber = async (req, res) => {
   try {
     const { schoolId } = req.params;
-    const { session } = req.query;
+    const { session, academicYear } = req.query;
 
     // Fetch school details for prefix
     const admin = await Admin.findById(schoolId);
@@ -589,6 +592,9 @@ const getNextAdmissionNumber = async (req, res) => {
     const admissionFilter = { school: schoolId };
     if (isValidCampusId(session)) {
       admissionFilter.session = session;
+    }
+    if (academicYear !== undefined && academicYear !== null && String(academicYear).trim() !== "") {
+      admissionFilter.academicYear = String(academicYear).trim();
     }
 
     const students = await Student.find(admissionFilter).select("admissionNum");
