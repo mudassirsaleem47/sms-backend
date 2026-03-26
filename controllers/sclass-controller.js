@@ -1,6 +1,13 @@
 const Sclass = require('../models/sclassSchema.js');
 const mongoose = require('mongoose');
 
+const isValidSchoolId = (schoolId) => (
+    !!schoolId &&
+    schoolId !== 'undefined' &&
+    schoolId !== 'null' &&
+    mongoose.Types.ObjectId.isValid(schoolId)
+);
+
 // 1. Nayi Class/Section Create karna
 const sclassCreate = async (req, res) => {
     try {
@@ -39,6 +46,10 @@ const getSclassesBySchool = async (req, res) => {
     try {
         const { schoolId } = req.params;
         const { campus } = req.query;
+
+        if (!isValidSchoolId(schoolId)) {
+            return res.status(400).json({ message: 'Invalid school ID.' });
+        }
 
         let query = { school: schoolId };
         if (

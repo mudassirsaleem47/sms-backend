@@ -1,4 +1,5 @@
 const Session = require('../models/sessionSchema.js');
+const mongoose = require('mongoose');
 
 const createSession = async (req, res) => {
     try {
@@ -93,6 +94,9 @@ const updateSession = async (req, res) => {
 const getActiveSessionBySchool = async (req, res) => {
     try {
         const { schoolId } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(schoolId)) {
+            return res.status(400).json({ success: false, message: 'Invalid school ID' });
+        }
         const activeSession = await Session.findOne({ school: schoolId, isActive: true });
         if (activeSession) {
             res.status(200).json({ success: true, session: activeSession });

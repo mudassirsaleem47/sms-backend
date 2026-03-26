@@ -18,6 +18,13 @@ const isValidCampusId = (campus) => (
   mongoose.Types.ObjectId.isValid(campus)
 );
 
+const isValidSchoolId = (schoolId) => (
+  !!schoolId &&
+  schoolId !== "undefined" &&
+  schoolId !== "null" &&
+  mongoose.Types.ObjectId.isValid(schoolId)
+);
+
 const getAdmissionPrefix = (admin) => {
   const configuredPrefix = admin?.settings?.admissionPrefix;
   if (typeof configuredPrefix === "string") {
@@ -384,6 +391,10 @@ const getStudentsBySchool = async (req, res) => {
     const { schoolId } = req.params;
     const { session, campus } = req.query; // Expect optional session/campus query param
 
+    if (!isValidSchoolId(schoolId)) {
+      return res.status(400).json({ message: "Invalid school ID." });
+    }
+
     let query = { school: schoolId, status: "Active" };
     if (session) {
       query.session = session;
@@ -439,6 +450,10 @@ const getDisabledStudents = async (req, res) => {
   try {
     const { schoolId } = req.params;
     const { campus } = req.query;
+
+    if (!isValidSchoolId(schoolId)) {
+      return res.status(400).json({ message: "Invalid school ID." });
+    }
     
     let query = { school: schoolId, status: "Disabled" };
     if (isValidCampusId(campus)) query.campus = campus;
@@ -645,6 +660,10 @@ const getNextAdmissionNumber = async (req, res) => {
   try {
     const { schoolId } = req.params;
     const { session, academicYear } = req.query;
+
+    if (!isValidSchoolId(schoolId)) {
+      return res.status(400).json({ message: "Invalid school ID." });
+    }
 
     // Fetch school details for prefix
     const admin = await Admin.findById(schoolId);

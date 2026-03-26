@@ -1,5 +1,6 @@
 const Admin = require('../models/adminSchema');
 const bcrypt = require('bcryptjs'); // Password secure karne ke liye
+const mongoose = require('mongoose');
 const crypto = require('crypto');
 const EmailService = require('../services/emailService');
 const { signAuthToken } = require('../middleware/auth');
@@ -167,6 +168,9 @@ const adminLogin = async (req, res) => {
 
 const getAdminDetail = async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ message: 'Invalid admin ID' });
+        }
         let admin = await Admin.findById(req.params.id);
         if (admin) {
             admin.password = undefined;
