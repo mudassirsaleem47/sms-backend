@@ -113,19 +113,28 @@ const studentAdmission = async (req, res) => {
     // Generate Admission Number (Format: [Initials]-[4 digits])
     // Fetch school details for prefix
     const admin = await Admin.findById(school);
+    if (!admin) {
+      console.warn(`⚠️ Admin/School not found for ID: ${school}`);
+    }
     const prefix = getAdmissionPrefix(admin);
+    console.log(`📌 Admission prefix for school ${school}: ${prefix}`);
 
     // Scope numbering to current session when available so a new session can start fresh.
     const admissionFilter = { school };
-    if (isValidCampusId(studentPayload.session)) {
+    // Validate session: accept both valid ObjectIds and non-empty strings
+    if (studentPayload.session && studentPayload.session !== "undefined" && studentPayload.session !== "null") {
       admissionFilter.session = studentPayload.session;
+      console.log(`📌 Filtering admission by session: ${studentPayload.session}`);
     }
     if (studentPayload.academicYear !== undefined && studentPayload.academicYear !== null && String(studentPayload.academicYear).trim() !== "") {
       admissionFilter.academicYear = String(studentPayload.academicYear).trim();
+      console.log(`📌 Filtering admission by academicYear: ${admissionFilter.academicYear}`);
     }
 
     // Find all matching students and derive next sequence from numeric suffix.
+    console.log(`📍 Searching for existing students with filter:`, admissionFilter);
     const schoolStudents = await Student.find(admissionFilter).select("admissionNum");
+    console.log(`📍 Found ${schoolStudents.length} students with admission numbers`);
 
     let nextNumber = 1;
     if (schoolStudents.length > 0) {
@@ -139,13 +148,15 @@ const studentAdmission = async (req, res) => {
             })
           .filter(n => n !== null && n >= 0);
         
+      console.log(`📍 Extracted numbers from admission nums:`, numbers);
         if (numbers.length > 0) {
             nextNumber = Math.max(...numbers) + 1;
+          console.log(`📍 Calculated nextNumber: ${nextNumber} (max existing: ${Math.max(...numbers)})`);
         }
     }
 
     const admissionNum = `${prefix}-${nextNumber.toString().padStart(4, "0")}`;
-    console.log(`🎫 Generated next admission number: ${admissionNum}`);
+    console.log(`✅ Generated admission number: ${admissionNum}`);
 
     const newStudent = new Student({
       ...studentPayload,
@@ -160,7 +171,7 @@ const studentAdmission = async (req, res) => {
     });
 
     const result = await newStudent.save();
-    console.log("✅ Student saved to database:", result._id);
+    console.log(`✅ Student saved to database with admissionNum ${result.admissionNum}:`, result._id);
 
     // --- Admission Confirmation Email Logic ---
     try {
@@ -588,16 +599,21 @@ const getNextAdmissionNumber = async (req, res) => {
     // Fetch school details for prefix
     const admin = await Admin.findById(schoolId);
     const prefix = getAdmissionPrefix(admin);
+    console.log(`📌 [getNextAdmissionNumber] Prefix for school ${schoolId}: ${prefix}`);
 
     const admissionFilter = { school: schoolId };
-    if (isValidCampusId(session)) {
+    // Validate session: accept both valid ObjectIds and non-empty strings
+    if (session && session !== "undefined" && session !== "null") {
       admissionFilter.session = session;
+      console.log(`📌 [getNextAdmissionNumber] Filtering by session: ${session}`);
     }
     if (academicYear !== undefined && academicYear !== null && String(academicYear).trim() !== "") {
       admissionFilter.academicYear = String(academicYear).trim();
+      console.log(`📌 [getNextAdmissionNumber] Filtering by academicYear: ${academicYear}`);
     }
 
     const students = await Student.find(admissionFilter).select("admissionNum");
+    console.log(`📌 [getNextAdmissionNumber] Found ${students.length} existing students with filter:`, admissionFilter);
 
     let nextNumber = 1;
     if (students.length > 0) {
@@ -613,15 +629,22 @@ const getNextAdmissionNumber = async (req, res) => {
 
       if (numbers.length > 0) {
         nextNumber = Math.max(...numbers) + 1;
+        console.log(`📌 [getNextAdmissionNumber] Next number calculated: ${nextNumber} (from max ${Math.max(...numbers)})`);
       }
     }
+
+    const nextAdmissionNum = `${prefix}-${nextNumber.toString().padStart(4, "0")}`;
+    console.log(`✅ [getNextAdmissionNumber] Generated admission number: ${nextAdmissionNum}`);
 
     res
       .status(200)
       .json({
-        nextAdmissionNum: `${prefix}-${nextNumber.toString().padStart(4, "0")}`,
+        nextAdmissionNum,
+        prefix,
+        number: nextNumber
       });
   } catch (err) {
+    console.error(`❌ [getNextAdmissionNumber] Error:`, err.message);
     res
       .status(500)
       .json({
