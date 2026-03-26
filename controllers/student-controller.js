@@ -115,20 +115,26 @@ const studentAdmission = async (req, res) => {
     const admin = await Admin.findById(school);
     const prefix = getAdmissionPrefix(admin);
 
-    // Find ALL students for this school to find the true maximum number
-    const schoolStudents = await Student.find({ school }).select("admissionNum");
-    
-    let nextNumber = 1;
+    // Scope numbering to current session when available so a new session can start fresh.
+    const admissionFilter = { school };
+    if (isValidCampusId(studentPayload.session)) {
+      admissionFilter.session = studentPayload.session;
+    }
+
+    // Find all matching students and derive next sequence from numeric suffix.
+    const schoolStudents = await Student.find(admissionFilter).select("admissionNum");
+
+    let nextNumber = 0;
     if (schoolStudents.length > 0) {
         const numbers = schoolStudents
             .map(s => {
-                if (!s.admissionNum) return 0;
+              if (!s.admissionNum) return null;
                 const parts = s.admissionNum.split("-");
                 const lastPart = parts[parts.length - 1];
                 const num = parseInt(lastPart, 10);
-                return isNaN(num) ? 0 : num;
+              return isNaN(num) ? null : num;
             })
-            .filter(n => n > 0);
+          .filter(n => n !== null && n >= 0);
         
         if (numbers.length > 0) {
             nextNumber = Math.max(...numbers) + 1;
@@ -574,24 +580,33 @@ const getStudentById = async (req, res) => {
 const getNextAdmissionNumber = async (req, res) => {
   try {
     const { schoolId } = req.params;
+    const { session } = req.query;
 
     // Fetch school details for prefix
     const admin = await Admin.findById(schoolId);
     const prefix = getAdmissionPrefix(admin);
 
-    const lastStudent = await Student.findOne({ school: schoolId })
-      .sort({ admissionNum: -1 })
-      .select("admissionNum");
+    const admissionFilter = { school: schoolId };
+    if (isValidCampusId(session)) {
+      admissionFilter.session = session;
+    }
 
-    let nextNumber = 1;
-    if (lastStudent && lastStudent.admissionNum) {
-      const parts = lastStudent.admissionNum.split("-");
-      const lastNumStr = parts[parts.length - 1]; // Get the numeric part (last element)
-      if (lastNumStr) {
-        const lastNum = parseInt(lastNumStr, 10);
-        if (!isNaN(lastNum)) {
-          nextNumber = lastNum + 1;
-        }
+    const students = await Student.find(admissionFilter).select("admissionNum");
+
+    let nextNumber = 0;
+    if (students.length > 0) {
+      const numbers = students
+        .map((s) => {
+          if (!s.admissionNum) return null;
+          const parts = s.admissionNum.split("-");
+          const lastPart = parts[parts.length - 1];
+          const num = parseInt(lastPart, 10);
+          return Number.isNaN(num) ? null : num;
+        })
+        .filter((n) => n !== null && n >= 0);
+
+      if (numbers.length > 0) {
+        nextNumber = Math.max(...numbers) + 1;
       }
     }
 
