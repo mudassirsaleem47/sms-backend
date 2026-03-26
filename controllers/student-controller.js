@@ -8,7 +8,15 @@ const MessageLog = require("../models/messageLogSchema.js");
 const EmailService = require("../services/emailService.js");
 const Admin = require("../models/adminSchema.js");
 const bcrypt = require("bcryptjs");
+const mongoose = require("mongoose");
 const { signAuthToken } = require('../middleware/auth');
+
+const isValidCampusId = (campus) => (
+  !!campus &&
+  campus !== "undefined" &&
+  campus !== "null" &&
+  mongoose.Types.ObjectId.isValid(campus)
+);
 
 const getAdmissionPrefix = (admin) => {
   const configuredPrefix = admin?.settings?.admissionPrefix;
@@ -315,7 +323,7 @@ const getStudentsBySchool = async (req, res) => {
     if (session) {
       query.session = session;
     }
-    if (campus) {
+    if (isValidCampusId(campus)) {
       query.$or = [
         { campus: campus },
         { campus: { $exists: false } },
@@ -357,7 +365,7 @@ const getDisabledStudents = async (req, res) => {
     const { campus } = req.query;
     
     let query = { school: schoolId, status: "Disabled" };
-    if (campus) query.campus = campus;
+    if (isValidCampusId(campus)) query.campus = campus;
 
     const students = await Student.find(query)
       .populate("sclassName")

@@ -1,6 +1,14 @@
 const Teacher = require('../models/teacherSchema.js');
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 const { signAuthToken } = require('../middleware/auth');
+
+const isValidCampusId = (campus) => (
+    !!campus &&
+    campus !== 'undefined' &&
+    campus !== 'null' &&
+    mongoose.Types.ObjectId.isValid(campus)
+);
 
 // 1. Add New Teacher
 const addTeacher = async (req, res) => {
@@ -52,7 +60,7 @@ const getTeachersBySchool = async (req, res) => {
         const { campus } = req.query;
 
         let query = { school: schoolId };
-        if (campus) {
+        if (isValidCampusId(campus)) {
             query.$or = [
                 { campus: campus },
                 { campus: { $exists: false } },

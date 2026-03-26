@@ -6,6 +6,13 @@ const Sclass = require('../models/sclassSchema.js');
 const mongoose = require('mongoose');
 const EmailService = require('../services/emailService.js');
 
+const isValidCampusId = (campus) => (
+    !!campus &&
+    campus !== 'undefined' &&
+    campus !== 'null' &&
+    mongoose.Types.ObjectId.isValid(campus)
+);
+
 // 1. Create Fee Structure
 const createFeeStructure = async (req, res) => {
     try {
@@ -42,7 +49,7 @@ const getFeeStructuresBySchool = async (req, res) => {
         const { campus } = req.query;
         
         let query = { school: schoolId, status: 'Active' };
-        if (campus) {
+        if (isValidCampusId(campus)) {
             query.$or = [
                 { campus: campus },
                 { campus: { $exists: false } },
@@ -208,7 +215,7 @@ const getPendingFees = async (req, res) => {
             status: { $in: ['Pending', 'Partial', 'Overdue'] }
         };
 
-        if (campus) {
+        if (isValidCampusId(campus)) {
             query.campus = campus;
         }
 
@@ -322,7 +329,7 @@ const getFeeTransactions = async (req, res) => {
         console.log('📅 Date Range:', { startDate, endDate });
 
         let query = { school: schoolId };
-        if (campus) query.campus = campus;
+        if (isValidCampusId(campus)) query.campus = campus;
         
         // Filter by date range if provided
         if (startDate && endDate) {
@@ -420,7 +427,7 @@ const getFeeStatistics = async (req, res) => {
         const feeMatchQuery = { school: new mongoose.Types.ObjectId(schoolId), ...feeDateQuery };
         const transMatchQuery = { school: new mongoose.Types.ObjectId(schoolId), ...transDateQuery };
 
-        if (campus) {
+        if (isValidCampusId(campus)) {
             feeMatchQuery.campus = new mongoose.Types.ObjectId(campus);
             transMatchQuery.campus = new mongoose.Types.ObjectId(campus);
         }

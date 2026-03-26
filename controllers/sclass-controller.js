@@ -1,4 +1,5 @@
 const Sclass = require('../models/sclassSchema.js');
+const mongoose = require('mongoose');
 
 // 1. Nayi Class/Section Create karna
 const sclassCreate = async (req, res) => {
@@ -40,7 +41,12 @@ const getSclassesBySchool = async (req, res) => {
         const { campus } = req.query;
 
         let query = { school: schoolId };
-        if (campus && campus !== 'undefined' && campus !== 'null') {
+        if (
+            campus &&
+            campus !== 'undefined' &&
+            campus !== 'null' &&
+            mongoose.Types.ObjectId.isValid(campus)
+        ) {
             query.$or = [
                 { campus: campus },
                 { campus: { $exists: false } },

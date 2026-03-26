@@ -1,6 +1,14 @@
 const Staff = require('../models/staffSchema.js');
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 const { signAuthToken } = require('../middleware/auth');
+
+const isValidCampusId = (campus) => (
+    !!campus &&
+    campus !== 'undefined' &&
+    campus !== 'null' &&
+    mongoose.Types.ObjectId.isValid(campus)
+);
 
 // Create new staff member
 const createStaff = async (req, res) => {
@@ -70,7 +78,7 @@ const getStaffBySchool = async (req, res) => {
 
         const filter = { school: schoolId };
         if (role) filter.role = role;
-        if (campus) {
+        if (isValidCampusId(campus)) {
             filter.$or = [
                 { campus: campus },
                 { campus: { $exists: false } },
@@ -107,7 +115,7 @@ const getStaffById = async (req, res) => {
         const { campus } = req.query; // Added campus from query
 
         let query = { _id: id }; // Query by _id
-        if (campus) query.campus = campus; // Add campus filter if provided
+        if (isValidCampusId(campus)) query.campus = campus; // Add campus filter if provided
 
         const staff = await Staff.findOne(query) // Changed from findById to findOne to use query object
             .populate('school', 'schoolName email')
