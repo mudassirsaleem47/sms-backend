@@ -186,6 +186,18 @@ const studentAdmission = async (req, res) => {
       siblings,
     });
 
+    // LOG: Debug what's being saved
+    console.log(`📝 Creating new student with payload:`, {
+      name: newStudent.name,
+      rollNum: newStudent.rollNum,
+      sclassName: newStudent.sclassName,
+      school: newStudent.school,
+      status: newStudent.status,
+      campus: newStudent.campus,
+      section: newStudent.section,
+      admissionNum: newStudent.admissionNum
+    });
+
     const result = await newStudent.save();
     console.log(`✅ Student saved to database with admissionNum ${result.admissionNum}:`, result._id);
 
@@ -384,11 +396,22 @@ const getStudentsBySchool = async (req, res) => {
       ];
     }
 
+    // LOG: Debug the query
+    console.log(`🔍 getStudentsBySchool query:`, JSON.stringify(query, null, 2));
+    console.log(`   schoolId: ${schoolId}, session: ${session || 'null'}, campus: ${campus || 'null'}`);
+
     // Find students belonging to this school ID
     // .populate('sclassName') se class ka poora data bhi saath mein aa jayega
     const students = await Student.find(query)
       .populate("sclassName")
       .populate("session"); // Populate session details if needed
+
+    console.log(`✅ Found ${students.length} students for schoolId ${schoolId}`);
+    if (students.length > 0) {
+      students.slice(0, 3).forEach(s => {
+        console.log(`   - ${s.name} (Class: ${s.sclassName?.sclassName}, Campus: ${s.campus})`);
+      });
+    }
 
     if (students.length === 0) {
       return res.status(200).json([]);
