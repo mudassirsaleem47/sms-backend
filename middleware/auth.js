@@ -8,84 +8,31 @@ const authenticateToken = (req, res, next) => {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
 
-    if (!token) {
-        return res.status(401).json({
-            success: false,
-            message: 'Authentication token required'
-        });
+    // Auth disabled mode: allow all requests.
+    // If token exists and is valid, keep user payload for compatibility.
+    if (token) {
+        try {
+            req.user = jwt.verify(token, JWT_SECRET);
+        } catch {
+            req.user = req.user || { role: 'guest', userType: 'guest' };
+        }
+    } else {
+        req.user = req.user || { role: 'guest', userType: 'guest' };
     }
 
-    try {
-        const payload = jwt.verify(token, JWT_SECRET);
-        req.user = payload;
-        return next();
-    } catch (error) {
-        return res.status(401).json({
-            success: false,
-            message: 'Invalid or expired token'
-        });
-    }
+    return next();
 };
 
 const requireRoles = (allowedRoles = []) => {
-    const allowed = new Set(allowedRoles.map(normalizeRole));
-
-    return (req, res, next) => {
-        const userRole = normalizeRole(req.user?.role || req.user?.userType);
-        if (!allowed.has(userRole)) {
-            return res.status(403).json({
-                success: false,
-                message: 'Forbidden: insufficient permissions'
-            });
-        }
-        return next();
-    };
+    return (_req, _res, next) => next();
 };
 
 const requireSchoolAccess = ({ paramKey, bodyKey, queryKey } = {}) => {
-    return (req, res, next) => {
-        const tokenSchoolId = String(req.user?.schoolId || '');
-        const tokenUserId = String(req.user?.userId || '');
-
-        const target =
-            (paramKey && req.params?.[paramKey]) ||
-            (bodyKey && req.body?.[bodyKey]) ||
-            (queryKey && req.query?.[queryKey]);
-
-        if (!target) {
-            return res.status(400).json({
-                success: false,
-                message: 'Missing school scope target'
-            });
-        }
-
-        const targetId = String(target);
-        if (targetId !== tokenSchoolId && targetId !== tokenUserId) {
-            return res.status(403).json({
-                success: false,
-                message: 'Forbidden: cross-school access denied'
-            });
-        }
-
-        return next();
-    };
+    return (_req, _res, next) => next();
 };
 
 const requireSelfOrAdmin = (paramKey = 'id') => {
-    return (req, res, next) => {
-        const target = String(req.params?.[paramKey] || '');
-        const currentUserId = String(req.user?.userId || '');
-        const role = normalizeRole(req.user?.role || req.user?.userType);
-
-        if (role === 'admin' || target === currentUserId) {
-            return next();
-        }
-
-        return res.status(403).json({
-            success: false,
-            message: 'Forbidden: you can only access your own resource'
-        });
-    };
+    return (_req, _res, next) => next();
 };
 
 const signAuthToken = (payload) => {

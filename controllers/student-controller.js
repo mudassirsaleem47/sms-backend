@@ -61,9 +61,25 @@ const studentAdmission = async (req, res) => {
   try {
     // Front-end se aane wala data
     const { rollNum, password, sclassName, school, campus } = req.body;
-    
-    // Check: Roll Number pehle se exist toh nahi karta in this class and campus?
-    const studentExists = await Student.findOne({ rollNum, sclassName, campus });
+
+    // Check: Roll number duplicate validation (campus optional).
+    // Important: never query ObjectId field with empty string, it can throw cast errors.
+    const duplicateQuery = {
+      rollNum: Number(rollNum),
+      sclassName,
+      school,
+    };
+
+    if (isValidCampusId(campus)) {
+      duplicateQuery.campus = campus;
+    } else {
+      duplicateQuery.$or = [
+        { campus: { $exists: false } },
+        { campus: null },
+      ];
+    }
+
+    const studentExists = await Student.findOne(duplicateQuery);
     if (studentExists) {
         return res.status(400).json({ message: "Roll Number already registered in this class/branch." });
     }

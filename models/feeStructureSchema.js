@@ -26,7 +26,7 @@ const feeStructureSchema = new mongoose.Schema({
     },
     dueDate: {
         type: Date,
-        required: true
+        required: false
     },
     description: {
         type: String,

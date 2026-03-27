@@ -13,10 +13,18 @@ const isValidCampusId = (campus) => (
     mongoose.Types.ObjectId.isValid(campus)
 );
 
+const normalizeDueDate = (value) => {
+    if (!value || value === 'null' || value === 'undefined') return undefined;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+};
+
 // 1. Create Fee Structure
 const createFeeStructure = async (req, res) => {
     try {
         const { feeName, feeType, amount, academicYear, dueDate, description, school, frequency, month } = req.body;
+
+        const normalizedDueDate = normalizeDueDate(dueDate);
 
         const newFeeStructure = new FeeStructure({
             school,
@@ -24,7 +32,7 @@ const createFeeStructure = async (req, res) => {
             feeType,
             amount,
             academicYear,
-            dueDate,
+            dueDate: normalizedDueDate,
             frequency,
             month,
             description: description || ""
@@ -78,10 +86,17 @@ const getFeeStructuresBySchool = async (req, res) => {
 const updateFeeStructure = async (req, res) => {
     try {
         const { id } = req.params;
+        const updatePayload = { ...req.body };
+
+        if (Object.prototype.hasOwnProperty.call(updatePayload, 'dueDate')) {
+            const normalizedDueDate = normalizeDueDate(updatePayload.dueDate);
+            if (!normalizedDueDate) delete updatePayload.dueDate;
+            else updatePayload.dueDate = normalizedDueDate;
+        }
         
         const updatedFeeStructure = await FeeStructure.findByIdAndUpdate(
             id,
-            req.body,
+            updatePayload,
             { new: true }
         );
 
@@ -103,13 +118,35 @@ const updateFeeStructure = async (req, res) => {
 const deleteFeeStructure = async (req, res) => {
     try {
         const { id } = req.params;
-        
-        // Check if any fees are assigned using this structure
-        const assignedFees = await Fee.findOne({ feeStructure: id });
-        if (assignedFees) {
-            return res.status(400).json({ 
-                message: "Cannot delete fee structure. Fees are already assigned to students." 
-            });
+
+        // Check all assigned fee rows for this structure.
+        // If rows are linked only to deleted students (orphans), clean them up and allow deletion.
+        const assignedFees = await Fee.find({ feeStructure: id }).select('_id student');
+        if (assignedFees.length > 0) {
+            const studentIds = [
+                ...new Set(
+                    assignedFees
+                        .map((fee) => fee.student?.toString())
+                        .filter(Boolean)
+                )
+            ];
+
+            const existingStudents = await Student.find({ _id: { $in: studentIds } }).select('_id');
+            const existingStudentIdSet = new Set(existingStudents.map((s) => s._id.toString()));
+
+            const feesLinkedToExistingStudents = assignedFees.filter((fee) =>
+                existingStudentIdSet.has(fee.student?.toString())
+            );
+
+            if (feesLinkedToExistingStudents.length > 0) {
+                return res.status(400).json({
+                    message: `Cannot delete fee structure. Fees are assigned to ${feesLinkedToExistingStudents.length} active student record(s).`
+                });
+            }
+
+            const orphanFeeIds = assignedFees.map((fee) => fee._id);
+            await FeeTransaction.deleteMany({ fee: { $in: orphanFeeIds } });
+            await Fee.deleteMany({ _id: { $in: orphanFeeIds } });
         }
 
         await FeeStructure.findByIdAndDelete(id);
@@ -166,7 +203,7 @@ const assignFeeToStudents = async (req, res) => {
                     totalAmount: feeStructure.amount,
                     paidAmount: 0,
                     pendingAmount: feeStructure.amount,
-                    dueDate: feeStructure.dueDate,
+                    dueDate: feeStructure.dueDate || new Date(),
                     academicYear: feeStructure.academicYear
                 });
 
