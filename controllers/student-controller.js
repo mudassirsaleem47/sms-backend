@@ -126,18 +126,38 @@ const studentAdmission = async (req, res) => {
     const prefix = getAdmissionPrefix(admin);
     console.log(`📌 Admission prefix for school ${school}: ${prefix}`);
 
-    // Scope numbering to current session when available so a new session can start fresh.
+    // School-wide continuous numbering (does not reset by session or academic year).
     const admissionFilter = { school };
     // Validate session: accept both valid ObjectIds and non-empty strings
     if (studentPayload.session && studentPayload.session !== "undefined" && studentPayload.session !== "null") {
       admissionFilter.session = studentPayload.session;
       console.log(`📌 Filtering admission by session: ${studentPayload.session}`);
     }
+    const requestedAcademicYear = (
+      studentPayload.academicYear !== undefined &&
+      studentPayload.academicYear !== null &&
+      String(studentPayload.academicYear).trim() !== ""
+    )
+      ? String(studentPayload.academicYear).trim()
+      : null;
+    if (requestedAcademicYear) {
+      admissionFilter.academicYear = requestedAcademicYear;
+      console.log(`Filtering admission by academicYear: ${requestedAcademicYear}`);
+    }
 
     // Find all matching students and derive next sequence from numeric suffix.
     console.log(`📍 Searching for existing students with filter:`, admissionFilter);
     let schoolStudents = await Student.find(admissionFilter).select("admissionNum");
-    console.log(`📍 Found ${schoolStudents.length} students with admission numbers`);
+
+    // Legacy fallback: old rows may not have academicYear persisted.
+    if (requestedAcademicYear && schoolStudents.length === 0) {
+      const legacyFilter = { ...admissionFilter };
+      delete legacyFilter.academicYear;
+      schoolStudents = await Student.find(legacyFilter).select("admissionNum");
+      console.log(`AcademicYear fallback applied. Found ${schoolStudents.length} students using filter:`, legacyFilter);
+    } else {
+      console.log(`📍 Found ${schoolStudents.length} students with admission numbers`);
+    }
 
     let nextNumber = 1;
     if (schoolStudents.length > 0) {
@@ -375,16 +395,35 @@ const getStudentsBySchool = async (req, res) => {
       return res.status(400).json({ message: "Invalid school ID." });
     }
 
-    let query = { school: schoolId, status: "Active" };
+    // Build query: Include Active, active, or missing status (backward compatible)
+    let query = {
+      school: schoolId,
+      status: { $in: ["Active", "active", null, undefined] }
+    };
+
+    // Add session filter if provided
     if (session) {
       query.session = session;
     }
+
+    // Add campus filter if provided - use $and to combine properly
     if (isValidCampusId(campus)) {
-      query.$or = [
-        { campus: campus },
-        { campus: { $exists: false } },
-        { campus: null }
-      ];
+      query = {
+        $and: [
+          { school: schoolId },
+          { status: { $in: ["Active", "active", null, undefined] } },
+          {
+            $or: [
+              { campus: campus },
+              { campus: { $exists: false } },
+              { campus: null }
+            ]
+          }
+        ]
+      };
+      if (session) {
+        query.$and.push({ session: session });
+      }
     }
 
     // LOG: Debug the query
@@ -639,7 +678,7 @@ const getStudentById = async (req, res) => {
 const getNextAdmissionNumber = async (req, res) => {
   try {
     const { schoolId } = req.params;
-    const { session } = req.query;
+    const { session, academicYear } = req.query;
 
     if (!isValidSchoolId(schoolId)) {
       return res.status(400).json({ message: "Invalid school ID." });
@@ -650,15 +689,34 @@ const getNextAdmissionNumber = async (req, res) => {
     const prefix = getAdmissionPrefix(admin);
     console.log(`📌 [getNextAdmissionNumber] Prefix for school ${schoolId}: ${prefix}`);
 
+    // School-wide continuous numbering (does not reset by session or academic year).
     const admissionFilter = { school: schoolId };
     // Validate session: accept both valid ObjectIds and non-empty strings
     if (session && session !== "undefined" && session !== "null") {
       admissionFilter.session = session;
       console.log(`📌 [getNextAdmissionNumber] Filtering by session: ${session}`);
     }
+    const requestedAcademicYear = (
+      academicYear !== undefined &&
+      academicYear !== null &&
+      String(academicYear).trim() !== ""
+    )
+      ? String(academicYear).trim()
+      : null;
+    if (requestedAcademicYear) {
+      admissionFilter.academicYear = requestedAcademicYear;
+      console.log(`[getNextAdmissionNumber] Filtering by academicYear: ${requestedAcademicYear}`);
+    }
 
     let students = await Student.find(admissionFilter).select("admissionNum");
-    console.log(`📌 [getNextAdmissionNumber] Found ${students.length} existing students with filter:`, admissionFilter);
+    if (requestedAcademicYear && students.length === 0) {
+      const legacyFilter = { ...admissionFilter };
+      delete legacyFilter.academicYear;
+      students = await Student.find(legacyFilter).select("admissionNum");
+      console.log(`[getNextAdmissionNumber] AcademicYear fallback applied. Found ${students.length} students with filter:`, legacyFilter);
+    } else {
+      console.log(`📌 [getNextAdmissionNumber] Found ${students.length} existing students with filter:`, admissionFilter);
+    }
 
     let nextNumber = 1;
     if (students.length > 0) {

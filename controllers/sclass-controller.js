@@ -58,11 +58,18 @@ const getSclassesBySchool = async (req, res) => {
             campus !== 'null' &&
             mongoose.Types.ObjectId.isValid(campus)
         ) {
-            query.$or = [
-                { campus: campus },
-                { campus: { $exists: false } },
-                { campus: null }
-            ];
+            query = {
+                $and: [
+                    { school: schoolId },
+                    {
+                        $or: [
+                            { campus: campus },
+                            { campus: { $exists: false } },
+                            { campus: null }
+                        ]
+                    }
+                ]
+            };
         }
 
         const sclasses = await Sclass.find(query)
